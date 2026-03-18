@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { registerAppsRoutes } from './routes/apps.js';
+import { registerScreenshotsRoutes } from './routes/screenshots.js';
 
 const buildServer = () => {
   const app = Fastify({
@@ -11,6 +12,7 @@ const buildServer = () => {
   });
 
   registerAppsRoutes(app);
+  registerScreenshotsRoutes(app);
 
   return app;
 };

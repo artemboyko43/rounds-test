@@ -22,3 +22,7 @@ coverage/
 Thumbs.db
 .vscode/
 .idea/
+
+# generated screenshots (keep placeholder)
+server/storage/screenshots/*
+!server/storage/screenshots/.gitkeep
