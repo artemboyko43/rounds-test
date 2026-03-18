@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
 
 import type { ScreenshotItem, TrackedApp } from '../api/types';
 import { captureApp, getApps } from '../api/appsApi';
@@ -15,6 +15,7 @@ import Skeleton from '@mui/material/Skeleton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
+import Link from '@mui/material/Link';
 
 export default function MonitoringPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,21 @@ export default function MonitoringPage() {
   const [scrollingIds, setScrollingIds] = useState<Set<number>>(new Set());
 
   const appTitle = useMemo(() => (app ? app.name ?? app.packageId ?? `App ${app.id}` : 'Monitoring'), [app]);
+
+  const formatGMTDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = days[date.getUTCDay()];
+    const month = months[date.getUTCMonth()];
+    const dayNum = date.getUTCDate();
+    const year = date.getUTCFullYear();
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+    
+    return `${day}, ${dayNum} ${month} ${year} ${hours}:${minutes}:${seconds} GMT`;
+  };
 
   const reload = async () => {
     if (!appId) return;
@@ -91,17 +107,20 @@ export default function MonitoringPage() {
     );
   }
 
-  const startTime = app?.createdAt ? new Date(app.createdAt).toLocaleString() : null;
+  const startTimeGMT = app?.createdAt ? formatGMTDate(app.createdAt) : null;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="h4">{appTitle}</Typography>
-        <Stack direction="row" spacing={2}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+        <Box sx={{ flex: 1 }} />
+        <Typography variant="h4" sx={{ flex: 1, textAlign: 'center' }}>
+          {appTitle}
+        </Typography>
+        <Stack direction="row" spacing={2} sx={{ flex: 1, justifyContent: 'flex-end' }}>
           <Button variant="contained" onClick={handleCapture} disabled={capturing || !app?.isActive}>
             {capturing ? 'Capturing...' : 'Capture Now'}
           </Button>
-          <Button component={Link} to="/" variant="outlined">
+          <Button component={RouterLink} to="/" variant="outlined">
             Back
           </Button>
         </Stack>
@@ -109,19 +128,38 @@ export default function MonitoringPage() {
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }}>
+          <Stack spacing={2}>
             <Box>
-              <Typography variant="h6">Source</Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', wordBreak: 'break-word' }}>
-                {app?.url ?? 'Loading...'}
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Link:
               </Typography>
+              {app?.url ? (
+                <Link
+                  href={app.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    color: 'primary.main',
+                    textDecoration: 'underline',
+                    wordBreak: 'break-word',
+                    '&:hover': {
+                      textDecoration: 'underline',
+                    },
+                  }}
+                >
+                  {app.url}
+                </Link>
+              ) : (
+                <Skeleton variant="text" width={300} />
+              )}
             </Box>
-            <Box sx={{ flexGrow: 1 }} />
             <Box>
-              <Typography variant="h6">Start time</Typography>
-              {startTime ? (
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                Start time
+              </Typography>
+              {startTimeGMT ? (
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {startTime}
+                  {startTimeGMT}
                 </Typography>
               ) : (
                 <Skeleton variant="text" width={220} />
@@ -150,12 +188,13 @@ export default function MonitoringPage() {
                 <CardContent>
                   <Stack direction="row" spacing={2} alignItems="baseline" justifyContent="space-between">
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Screenshot time: {new Date(s.capturedAt).toLocaleString()}
+                      Screenshot time: {formatGMTDate(s.capturedAt)}
                     </Typography>
                     <Typography variant="body2" sx={{ color: s.status === 'SUCCESS' ? 'success.main' : 'error.main' }}>
                       {s.status}
                     </Typography>
                   </Stack>
+                  <Divider sx={{ my: 1 }} />
                 </CardContent>
                  <Box
                    onScroll={() => {
