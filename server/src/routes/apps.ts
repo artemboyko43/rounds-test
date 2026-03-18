@@ -23,6 +23,11 @@ type UpdateBody = z.infer<typeof updateAppBodySchema>;
 
 const inProgressCaptures = new Map<number, Promise<unknown>>();
 
+const timelineQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(50).optional(),
+  cursor: z.coerce.number().int().positive().optional(),
+});
+
 export const registerAppsRoutes = (app: FastifyInstance) => {
   app.get('/api/apps', async () => {
     const items = await prisma.trackedApp.findMany({
@@ -126,6 +131,61 @@ export const registerAppsRoutes = (app: FastifyInstance) => {
       });
 
       return reply.send(updated);
+    }
+  );
+
+  app.get(
+    '/api/apps/:id/screenshots',
+    async (
+      req: FastifyRequest,
+      reply: FastifyReply
+    ): Promise<
+      | { items: { id: number; capturedAt: string; imageUrl: string; status: string }[]; nextCursor: number | null }
+      | { error: string }
+    > => {
+      const id = Number((req.params as { id?: string }).id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return reply.status(400).send({ error: 'Invalid id' });
+      }
+
+      const parsed = timelineQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.message });
+      }
+
+      const limit = parsed.data.limit ?? 20;
+      const cursor = parsed.data.cursor;
+
+      const exists = await prisma.trackedApp.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!exists) {
+        return reply.status(404).send({ error: 'Not found' });
+      }
+
+      const screenshots = await prisma.screenshot.findMany({
+        where: { trackedAppId: id },
+        orderBy: [{ capturedAt: 'desc' }, { id: 'desc' }],
+        take: limit + 1,
+        skip: cursor ? 1 : 0,
+        cursor: cursor ? { id: cursor } : undefined,
+        select: { id: true, capturedAt: true, imagePath: true, status: true },
+      });
+
+      const items = screenshots.slice(0, limit).map((s) => ({
+        id: s.id,
+        capturedAt: s.capturedAt.toISOString(),
+        imageUrl: `/api/screenshots/${s.id}/file`,
+        status: s.status,
+      }));
+
+      let nextCursor: number | null = null;
+      if (items.length === limit) {
+        nextCursor = items.at(-1)?.id ?? null;
+      }
+
+      return reply.send({ items, nextCursor });
     }
   );
 
