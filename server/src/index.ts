@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import { registerAppsRoutes } from './routes/apps.js';
 import { registerScreenshotsRoutes } from './routes/screenshots.js';
 import cors from '@fastify/cors';
+import { startScheduler } from './services/scheduler.js';
 
 const buildServer = () => {
   const app = Fastify({
@@ -28,6 +29,10 @@ const start = async () => {
 
   const app = buildServer();
   await app.listen({ port, host });
+
+  if (process.env.DISABLE_SCHEDULER !== 'true') {
+    await startScheduler();
+  }
 };
 
 start().catch((err) => {
