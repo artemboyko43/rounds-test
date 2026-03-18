@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
+import { captureAppScreenshot } from '../services/capture.js';
 
 const createAppBodySchema = z.object({
   name: z.string().min(1).max(200).optional(),
@@ -19,6 +20,8 @@ const updateAppBodySchema = z.object({
 
 type Body = z.infer<typeof createAppBodySchema>;
 type UpdateBody = z.infer<typeof updateAppBodySchema>;
+
+const inProgressCaptures = new Map<number, Promise<unknown>>();
 
 export const registerAppsRoutes = (app: FastifyInstance) => {
   app.get('/api/apps', async () => {
@@ -123,6 +126,43 @@ export const registerAppsRoutes = (app: FastifyInstance) => {
       });
 
       return reply.send(updated);
+    }
+  );
+
+  app.post(
+    '/api/apps/:id/capture',
+    async (
+      req: FastifyRequest,
+      reply: FastifyReply
+    ): Promise<{ screenshotId: number } | { error: string }> => {
+      const id = Number((req.params as { id?: string }).id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return reply.status(400).send({ error: 'Invalid id' });
+      }
+
+      const existing = await prisma.trackedApp.findUnique({
+        where: { id },
+        select: { id: true, isActive: true },
+      });
+      if (!existing || !existing.isActive) {
+        return reply.status(404).send({ error: 'Not found' });
+      }
+
+      if (inProgressCaptures.has(id)) {
+        return reply.status(409).send({ error: 'Capture already in progress' });
+      }
+
+      const job = captureAppScreenshot(id)
+        .then((shot) => {
+          return { screenshotId: shot.id };
+        })
+        .finally(() => {
+          inProgressCaptures.delete(id);
+        });
+
+      inProgressCaptures.set(id, job);
+      const result = await job;
+      return reply.send(result);
     }
   );
 };
