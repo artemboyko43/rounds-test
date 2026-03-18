@@ -1,0 +1,20 @@
+{
+  "name": "rounds-server",
+  "private": true,
+  "version": "0.1.0",
+  "main": "dist/index.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.cjs"
+  },
+  "dependencies": {
+    "fastify": "^5.1.0",
+    "fastify-plugin": "^5.0.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}
