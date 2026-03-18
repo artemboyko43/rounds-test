@@ -1,0 +1,128 @@
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { prisma } from '../db/prisma.js';
+
+const createAppBodySchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  packageId: z.string().min(1).max(200).optional(),
+  url: z.string().url().max(2000),
+  captureIntervalMinutes: z.number().int().positive().optional(),
+});
+
+const updateAppBodySchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  packageId: z.string().min(1).max(200).optional(),
+  url: z.string().url().max(2000).optional(),
+  captureIntervalMinutes: z.number().int().positive().optional(),
+  isActive: z.boolean().optional(),
+});
+
+type Body = z.infer<typeof createAppBodySchema>;
+type UpdateBody = z.infer<typeof updateAppBodySchema>;
+
+export const registerAppsRoutes = (app: FastifyInstance) => {
+  app.get('/api/apps', async () => {
+    const items = await prisma.trackedApp.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    return { items };
+  });
+
+  app.post(
+    '/api/apps',
+    async (
+      req: FastifyRequest,
+      reply: FastifyReply
+    ): Promise<{ id: number } | { error: string }> => {
+      const parsed = createAppBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.message });
+      }
+
+      const body: Body = parsed.data;
+      const created = await prisma.trackedApp.create({
+        data: {
+          name: body.name,
+          packageId: body.packageId,
+          url: body.url,
+          captureIntervalMinutes: body.captureIntervalMinutes,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      return reply.send(created);
+    }
+  );
+
+  app.put(
+    '/api/apps/:id',
+    async (
+      req: FastifyRequest,
+      reply: FastifyReply
+    ): Promise<{ id: number } | { error: string }> => {
+      const id = Number((req.params as { id?: string }).id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return reply.status(400).send({ error: 'Invalid id' });
+      }
+
+      const parsed = updateAppBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: parsed.error.message });
+      }
+
+      const update: UpdateBody = parsed.data;
+
+      const existing = await prisma.trackedApp.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) {
+        return reply.status(404).send({ error: 'Not found' });
+      }
+
+      await prisma.trackedApp.update({
+        where: { id },
+        data: {
+          name: update.name,
+          packageId: update.packageId,
+          url: update.url,
+          captureIntervalMinutes: update.captureIntervalMinutes,
+          isActive: update.isActive,
+        },
+      });
+
+      return reply.send({ id });
+    }
+  );
+
+  app.delete(
+    '/api/apps/:id',
+    async (
+      req: FastifyRequest,
+      reply: FastifyReply
+    ): Promise<{ id: number; isActive: boolean } | { error: string }> => {
+      const id = Number((req.params as { id?: string }).id);
+      if (!Number.isInteger(id) || id <= 0) {
+        return reply.status(400).send({ error: 'Invalid id' });
+      }
+
+      const existing = await prisma.trackedApp.findUnique({
+        where: { id },
+        select: { id: true },
+      });
+      if (!existing) {
+        return reply.status(404).send({ error: 'Not found' });
+      }
+
+      const updated = await prisma.trackedApp.update({
+        where: { id },
+        data: { isActive: false },
+        select: { id: true, isActive: true },
+      });
+
+      return reply.send(updated);
+    }
+  );
+};

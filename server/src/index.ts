@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { registerAppsRoutes } from './routes/apps.js';
 
 const buildServer = () => {
   const app = Fastify({
@@ -8,6 +9,8 @@ const buildServer = () => {
   app.get('/health', async () => {
     return { status: 'ok' };
   });
+
+  registerAppsRoutes(app);
 
   return app;
 };
