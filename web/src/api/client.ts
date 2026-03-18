@@ -1,12 +1,25 @@
-const API_BASE_URL =
+export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL && String(import.meta.env.VITE_API_BASE_URL).trim().length > 0
     ? String(import.meta.env.VITE_API_BASE_URL)
     : 'http://localhost:4000';
 
 export async function apiGet<T>(path: string): Promise<T> {
+  return apiRequest<T>(path, { method: 'GET' });
+}
+
+type ApiJsonInit = {
+  method: string;
+  body?: unknown;
+};
+
+export async function apiRequest<T>(path: string, init: ApiJsonInit): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (init.body !== undefined) headers['Content-Type'] = 'application/json';
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
+    method: init.method,
+    headers,
+    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
 
   if (!res.ok) {
