@@ -10,11 +10,21 @@
   },
   "scripts": {
     "format": "prettier . --write",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspace=server && npm run typecheck --workspace=web",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "e2e:install": "playwright install chromium",
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=web\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:web": "npm run dev --workspace=web"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@eslint/js": "^9.18.0",
     "@types/node": "^22.13.1",
+    "concurrently": "^9.1.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.14.0",

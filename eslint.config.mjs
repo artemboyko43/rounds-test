@@ -3,7 +3,19 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default [
-  { ignores: ['**/dist/**', '**/build/**', '**/coverage/**', '**/node_modules/**'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/build/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      'playwright-report/**',
+      'test-results/**',
+      'blob-report/**',
+      'playwright.config.mjs',
+      'e2e/global-setup.mjs',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
