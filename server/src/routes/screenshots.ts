@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prisma } from '../db/prisma.js';
+import { parseRouteId } from '../http/parseRouteId.js';
 
 const storageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -37,8 +38,8 @@ export const registerScreenshotsRoutes = (app: FastifyInstance) => {
   app.get(
     '/api/screenshots/:id/file',
     async (req, reply: FastifyReply): Promise<void> => {
-      const id = Number((req.params as { id?: string }).id);
-      if (!Number.isInteger(id) || id <= 0) {
+      const id = parseRouteId((req.params as { id?: string }).id);
+      if (id === null) {
         reply.status(400).send({ error: 'Invalid id' });
         return;
       }

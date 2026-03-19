@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL && String(import.meta.env.VITE_API_BASE_URL).trim().length > 0
+  typeof import.meta.env.VITE_API_BASE_URL === 'string'
     ? String(import.meta.env.VITE_API_BASE_URL)
     : 'http://localhost:4000';
 

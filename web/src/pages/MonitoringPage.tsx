@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 
 import type { ScreenshotItem, TrackedApp } from '../api/types';
 import { captureApp, getApps } from '../api/appsApi';
 import { getAppScreenshots } from '../api/screenshotsApi';
 import { API_BASE_URL } from '../api/client';
+import { formatUtcGmt } from '../lib/formatUtcGmt';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -23,45 +24,34 @@ export default function MonitoringPage() {
 
   const [app, setApp] = useState<TrackedApp | null>(null);
   const [items, setItems] = useState<ScreenshotItem[] | null>(null);
+  const [nextCursor, setNextCursor] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
-  const [scrollingIds, setScrollingIds] = useState<Set<number>>(new Set());
+
+  const PAGE_LIMIT = 10;
 
   const appTitle = useMemo(() => (app ? app.name ?? app.packageId ?? `App ${app.id}` : 'Monitoring'), [app]);
 
-  const formatGMTDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = days[date.getUTCDay()];
-    const month = months[date.getUTCMonth()];
-    const dayNum = date.getUTCDate();
-    const year = date.getUTCFullYear();
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-    
-    return `${day}, ${dayNum} ${month} ${year} ${hours}:${minutes}:${seconds} GMT`;
-  };
-
-  const reload = async () => {
+  const reload = useCallback(async () => {
     if (!appId) return;
     setError(null);
     try {
       const [appsRes, screenshotsRes] = await Promise.all([
         getApps(),
-        getAppScreenshots(appId, 10),
+        getAppScreenshots(appId, PAGE_LIMIT),
       ]);
       setApp(appsRes.items.find((a) => a.id === appId) ?? null);
       setItems(screenshotsRes.items);
+      setNextCursor(screenshotsRes.nextCursor);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to load');
     }
-  };
+  }, [appId]);
 
   useEffect(() => {
-    reload();
-  }, [appId]);
+    void reload();
+  }, [reload]);
 
   const handleCapture = async () => {
     if (!appId) return;
@@ -77,18 +67,19 @@ export default function MonitoringPage() {
     }
   };
 
-  const handleScrollStart = (screenshotId: number) => {
-    setScrollingIds((prev) => new Set(prev).add(screenshotId));
-  };
-
-  const handleScrollEnd = (screenshotId: number) => {
-    setTimeout(() => {
-      setScrollingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(screenshotId);
-        return next;
-      });
-    }, 1000);
+  const loadMore = async (): Promise<void> => {
+    if (!appId || loadingMore || nextCursor === null) return;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const res = await getAppScreenshots(appId, PAGE_LIMIT, nextCursor);
+      setItems((prev) => (prev ? [...prev, ...res.items] : res.items));
+      setNextCursor(res.nextCursor);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to load more screenshots');
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   if (!appId) {
@@ -107,7 +98,7 @@ export default function MonitoringPage() {
     );
   }
 
-  const startTimeGMT = app?.createdAt ? formatGMTDate(app.createdAt) : null;
+  const startTimeGMT = app?.createdAt ? formatUtcGmt(app.createdAt) : null;
 
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
@@ -188,7 +179,7 @@ export default function MonitoringPage() {
                 <CardContent>
                   <Stack direction="row" spacing={2} alignItems="baseline" justifyContent="space-between">
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Screenshot time: {formatGMTDate(s.capturedAt)}
+                      Screenshot time: {formatUtcGmt(s.capturedAt)}
                     </Typography>
                     <Typography variant="body2" sx={{ color: s.status === 'SUCCESS' ? 'success.main' : 'error.main' }}>
                       {s.status}
@@ -197,33 +188,14 @@ export default function MonitoringPage() {
                   <Divider sx={{ my: 1 }} />
                 </CardContent>
                  <Box
-                   onScroll={() => {
-                     handleScrollStart(s.id);
-                     handleScrollEnd(s.id);
-                   }}
                    sx={{
                      width: '100%',
                      maxHeight: '70vh',
                      overflowY: 'auto',
                      overflowX: 'hidden',
-                     backgroundColor: '#fafafa',
-                     border: '1px solid #e0e0e0',
-                     scrollbarWidth: scrollingIds.has(s.id) ? 'thin' : 'none',
-                     msOverflowStyle: scrollingIds.has(s.id) ? 'auto' : 'none',
-                     '&::-webkit-scrollbar': {
-                       width: scrollingIds.has(s.id) ? '8px' : '0px',
-                       transition: 'width 0.3s ease',
-                     },
-                     '&::-webkit-scrollbar-track': {
-                       backgroundColor: '#f1f1f1',
-                     },
-                     '&::-webkit-scrollbar-thumb': {
-                       backgroundColor: '#888',
-                       borderRadius: '4px',
-                       '&:hover': {
-                         backgroundColor: '#555',
-                       },
-                     },
+                     bgcolor: 'grey.50',
+                     border: 1,
+                     borderColor: 'divider',
                    }}
                  >
                    <Box
@@ -243,6 +215,14 @@ export default function MonitoringPage() {
             </Box>
           ))}
         </Stack>
+      )}
+
+      {items && items.length > 0 && nextCursor !== null && (
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+          <Button variant="outlined" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? 'Loading...' : 'Load more'}
+          </Button>
+        </Box>
       )}
     </Box>
   );

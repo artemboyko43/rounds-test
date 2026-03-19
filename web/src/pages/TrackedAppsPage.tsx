@@ -31,6 +31,7 @@ import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
+import { parseOptionalPositiveInt } from '../lib/parseOptionalPositiveInt';
 
 export default function TrackedAppsPage() {
   const [items, setItems] = useState<TrackedApp[] | null>(null);
@@ -67,12 +68,19 @@ export default function TrackedAppsPage() {
 
   const submitCreate = async () => {
     setCreating(true);
+    setError(null);
     try {
+      const interval = parseOptionalPositiveInt(newCaptureInterval);
+      if (!interval.ok) {
+        setError(interval.error);
+        return;
+      }
+
       const payload: CreateAppInput = {
         url: newUrl,
         name: newName.trim().length ? newName.trim() : undefined,
         packageId: newPackageId.trim().length ? newPackageId.trim() : undefined,
-        captureIntervalMinutes: newCaptureInterval.trim().length ? Number(newCaptureInterval) : undefined,
+        captureIntervalMinutes: interval.value,
       };
 
       await createApp(payload);
@@ -109,12 +117,20 @@ export default function TrackedAppsPage() {
   const submitEdit = async () => {
     if (!editingId) return;
     setSavingEdit(true);
+    setError(null);
     try {
+      const interval = parseOptionalPositiveInt(editCaptureInterval);
+      if (!interval.ok) {
+        setError(interval.error);
+        setSavingEdit(false);
+        return;
+      }
+
       const payload: UpdateAppInput = {
         url: editUrl.trim().length ? editUrl.trim() : undefined,
         name: editName.trim().length ? editName.trim() : undefined,
         packageId: editPackageId.trim().length ? editPackageId.trim() : undefined,
-        captureIntervalMinutes: editCaptureInterval.trim().length ? Number(editCaptureInterval) : undefined,
+        captureIntervalMinutes: interval.value,
         isActive: editActive,
       };
 

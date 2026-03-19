@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '../db/prisma.js';
+import { parseRouteId } from '../http/parseRouteId.js';
 import { captureAppScreenshot } from '../services/capture.js';
 
 const createAppBodySchema = z.object({
@@ -70,8 +71,8 @@ export const registerAppsRoutes = (app: FastifyInstance) => {
       req: FastifyRequest,
       reply: FastifyReply
     ): Promise<{ id: number } | { error: string }> => {
-      const id = Number((req.params as { id?: string }).id);
-      if (!Number.isInteger(id) || id <= 0) {
+      const id = parseRouteId((req.params as { id?: string }).id);
+      if (id === null) {
         return reply.status(400).send({ error: 'Invalid id' });
       }
 
@@ -111,8 +112,8 @@ export const registerAppsRoutes = (app: FastifyInstance) => {
       req: FastifyRequest,
       reply: FastifyReply
     ): Promise<{ id: number; isActive: boolean } | { error: string }> => {
-      const id = Number((req.params as { id?: string }).id);
-      if (!Number.isInteger(id) || id <= 0) {
+      const id = parseRouteId((req.params as { id?: string }).id);
+      if (id === null) {
         return reply.status(400).send({ error: 'Invalid id' });
       }
 
@@ -143,8 +144,8 @@ export const registerAppsRoutes = (app: FastifyInstance) => {
       | { items: { id: number; capturedAt: string; imageUrl: string; status: string }[]; nextCursor: number | null }
       | { error: string }
     > => {
-      const id = Number((req.params as { id?: string }).id);
-      if (!Number.isInteger(id) || id <= 0) {
+      const id = parseRouteId((req.params as { id?: string }).id);
+      if (id === null) {
         return reply.status(400).send({ error: 'Invalid id' });
       }
 
@@ -195,8 +196,8 @@ export const registerAppsRoutes = (app: FastifyInstance) => {
       req: FastifyRequest,
       reply: FastifyReply
     ): Promise<{ screenshotId: number } | { error: string }> => {
-      const id = Number((req.params as { id?: string }).id);
-      if (!Number.isInteger(id) || id <= 0) {
+      const id = parseRouteId((req.params as { id?: string }).id);
+      if (id === null) {
         return reply.status(400).send({ error: 'Invalid id' });
       }
 

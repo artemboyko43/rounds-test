@@ -46,6 +46,11 @@ export const captureAppScreenshot = async (trackedAppId: number) => {
 
   const browser = await chromium.launch({
     headless: true,
+    args: [
+      '--disable-dev-shm-usage',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+    ],
   });
 
   const context = await browser.newContext({

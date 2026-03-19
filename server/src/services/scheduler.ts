@@ -3,11 +3,22 @@ import { prisma } from '../db/prisma.js';
 
 const DEFAULT_CAPTURE_INTERVAL_MINUTES = 60;
 const MAX_CONCURRENT_CAPTURES = 2;
-const SCHEDULER_CHECK_INTERVAL_MINUTES = 5;
+const parsePositiveInt = (value: string | undefined, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+// How often we evaluate whether an app is "due" for capture.
+// Must be <= smallest possible capture interval to avoid extra delay (e.g. 5-min capture
+// shouldn't wait for a 5-min tick to align perfectly).
+const SCHEDULER_CHECK_INTERVAL_MINUTES = parsePositiveInt(
+  process.env.SCHEDULER_CHECK_INTERVAL_MINUTES,
+  1
+);
 
 const inProgressCaptures = new Set<number>();
 
-const shouldCapture = async (appId: number, lastCaptureTime: Date | null, intervalMinutes: number | null): Promise<boolean> => {
+const shouldCapture = (appId: number, lastCaptureTime: Date | null, intervalMinutes: number | null): boolean => {
   if (inProgressCaptures.has(appId)) {
     return false;
   }
@@ -62,7 +73,7 @@ const runScheduler = async () => {
       select: { capturedAt: true },
     });
 
-    const needsCapture = await shouldCapture(
+    const needsCapture = shouldCapture(
       app.id,
       lastScreenshot?.capturedAt ?? null,
       app.captureIntervalMinutes

@@ -13,6 +13,15 @@ const buildServer = () => {
     origin: true,
   });
 
+  app.get('/', async () => {
+    return {
+      message: 'Rounds API',
+      health: '/health',
+      api: '/api/apps',
+      docs: 'Use the web UI at http://localhost (or port 80) for the full app.',
+    };
+  });
+
   app.get('/health', async () => {
     return { status: 'ok' };
   });
