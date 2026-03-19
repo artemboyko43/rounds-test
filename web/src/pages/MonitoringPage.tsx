@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 
 import type { ScreenshotItem, TrackedApp } from '../api/types';
@@ -28,6 +28,9 @@ export default function MonitoringPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
+  /** Scrollbars for tall screenshots: hidden until the user scrolls that pane. */
+  const [scrollbarVisibleForId, setScrollbarVisibleForId] = useState<Set<number>>(() => new Set());
+  const scrollbarHideTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   const PAGE_LIMIT = 10;
 
@@ -52,6 +55,37 @@ export default function MonitoringPage() {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    const timers = scrollbarHideTimersRef.current;
+    return () => {
+      timers.forEach((t) => clearTimeout(t));
+      timers.clear();
+    };
+  }, []);
+
+  const revealScrollbarWhileScrolling = useCallback((screenshotId: number) => {
+    setScrollbarVisibleForId((prev) => {
+      const next = new Set(prev);
+      next.add(screenshotId);
+      return next;
+    });
+
+    const timers = scrollbarHideTimersRef.current;
+    const existing = timers.get(screenshotId);
+    if (existing) clearTimeout(existing);
+
+    const t = setTimeout(() => {
+      setScrollbarVisibleForId((prev) => {
+        const next = new Set(prev);
+        next.delete(screenshotId);
+        return next;
+      });
+      timers.delete(screenshotId);
+    }, 1000);
+
+    timers.set(screenshotId, t);
+  }, []);
 
   const handleCapture = async () => {
     if (!appId) return;
@@ -173,7 +207,9 @@ export default function MonitoringPage() {
         <Alert severity="info">No screenshots yet.</Alert>
       ) : (
         <Stack spacing={2}>
-          {items.map((s, idx) => (
+          {items.map((s, idx) => {
+            const showScrollbar = scrollbarVisibleForId.has(s.id);
+            return (
             <Box key={s.id}>
               <Card>
                 <CardContent>
@@ -188,6 +224,7 @@ export default function MonitoringPage() {
                   <Divider sx={{ my: 1 }} />
                 </CardContent>
                  <Box
+                   onScroll={() => revealScrollbarWhileScrolling(s.id)}
                    sx={{
                      width: '100%',
                      maxHeight: '70vh',
@@ -196,6 +233,22 @@ export default function MonitoringPage() {
                      bgcolor: 'grey.50',
                      border: 1,
                      borderColor: 'divider',
+                     scrollbarWidth: showScrollbar ? 'thin' : 'none',
+                     msOverflowStyle: showScrollbar ? 'auto' : 'none',
+                     '&::-webkit-scrollbar': {
+                       width: showScrollbar ? '8px' : '0px',
+                       transition: 'width 0.2s ease',
+                     },
+                     '&::-webkit-scrollbar-track': {
+                       backgroundColor: 'action.hover',
+                     },
+                     '&::-webkit-scrollbar-thumb': {
+                       backgroundColor: 'text.disabled',
+                       borderRadius: 1,
+                       '&:hover': {
+                         backgroundColor: 'text.secondary',
+                       },
+                     },
                    }}
                  >
                    <Box
@@ -213,7 +266,8 @@ export default function MonitoringPage() {
               </Card>
               {idx < items.length - 1 && <Divider sx={{ mt: 2 }} />}
             </Box>
-          ))}
+            );
+          })}
         </Stack>
       )}
 

@@ -308,6 +308,34 @@ npm run prisma:migrate
    docker-compose up -d --build
    ```
 
+### Docker build fails: `rpc error ... Unavailable ... EOF`
+
+That message comes from the **Docker engine / BuildKit**, not from this repo. It often happens on **Docker Desktop for Windows (WSL2)** when two services build in parallel (`npm ci` on `server` and `web` at once) and the daemon drops the connection.
+
+**Try, in order:**
+
+1. **Disable Compose Bake** (parallel bake → Buildx) for this run:
+   ```bash
+   COMPOSE_BAKE=false docker compose up -d --build
+   ```
+   **PowerShell:**
+   ```powershell
+   $env:COMPOSE_BAKE='false'; docker compose up -d --build
+   ```
+
+2. **Build one image at a time**, then start:
+   ```bash
+   docker compose build server
+   docker compose build web
+   docker compose up -d
+   ```
+
+3. **Helper scripts** (same as above, plus `COMPOSE_BAKE=false`):
+   - PowerShell: `.\scripts\docker-build-reliable.ps1`
+   - Bash: `sh scripts/docker-build-reliable.sh`
+
+4. **Environment:** Restart **Docker Desktop**, run `wsl --shutdown` then start Docker again, ensure enough **disk and RAM** (Settings → Resources). Optional last resort: `DOCKER_BUILDKIT=0 docker compose build ...` (legacy builder).
+
 ### Access the Application
 
 - **Web UI**: `http://localhost`
