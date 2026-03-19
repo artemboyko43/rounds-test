@@ -212,7 +212,34 @@ The storage directory is created automatically on first capture. Screenshots are
 
 - **Lint**: `npm run lint`
 - **Format**: `npm run format`
-- **Type check**: `npm run typecheck` (in each workspace)
+- **Type check**: `npm run typecheck` (server + web from repo root)
+
+### CI/CD (GitHub Actions)
+
+- **CI** (`.github/workflows/ci.yml`): on pushes/PRs to `main`, `master`, and `dev` — `npm ci`, Prisma generate, **typecheck**, **lint**, **build** server + web, **Playwright E2E** (Chromium + fast listing URL, manual capture).
+- **CD** (`.github/workflows/cd.yml`): on pushes to `main` — `docker compose build` to verify images still build (no registry push; add `docker push` / deploy steps when you have a target).
+
+### End-to-end tests (Playwright)
+
+From the repo root (after a normal install):
+
+```bash
+# One-time: browsers for the test runner (~ UI)
+npm run e2e:install
+
+# Server captures also need Chromium (if not already installed for local dev)
+cd server && npx playwright install chromium && cd ..
+
+# Builds + serves API + preview, then runs e2e/global-setup (SQLite `server/prisma/e2e.db`)
+npm run build --workspace=server
+npm run build --workspace=web
+npm run test:e2e
+```
+
+Optional: `E2E_LISTING_URL=https://example.com` (default) — use a stable HTTPS page so CI captures stay reliable.
+
+- Report (after a run): `npm run test:e2e:report`
+- UI mode: `npm run test:e2e:ui`
 
 ### Project Structure
 
@@ -224,6 +251,8 @@ rounds-test/
 │   └── storage/      # Screenshot storage
 ├── web/              # React frontend
 │   └── src/          # React components and pages
+├── e2e/               # Playwright specs + global DB setup
+├── playwright.config.ts
 └── package.json      # Root workspace configuration
 ```
 
