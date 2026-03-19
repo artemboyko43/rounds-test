@@ -53,7 +53,7 @@ Optional: set `SCHEDULER_CHECK_INTERVAL_MINUTES` (default **1**) so short per-ap
    ```
 
    This will:
-   - Create the SQLite database file (`prisma/dev.db`)
+   - Create the SQLite database file (default: `server/dev.db` when `DATABASE_URL` is `file:./dev.db`)
    - Set up the `TrackedApp` and `Screenshot` tables
    - Generate the Prisma client
 
@@ -252,7 +252,7 @@ rounds-test/
 ├── web/              # React frontend
 │   └── src/          # React components and pages
 ├── e2e/               # Playwright specs + global DB setup
-├── playwright.config.ts
+├── playwright.config.mjs
 └── package.json      # Root workspace configuration
 ```
 

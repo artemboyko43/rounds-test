@@ -7,7 +7,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const serverDir = path.join(root, 'server');
 const prismaDir = path.join(serverDir, 'prisma');
 
-function wipeE2EDatabaseArtifacts(): void {
+function wipeE2EDatabaseArtifacts() {
   if (!fs.existsSync(prismaDir)) return;
   for (const file of fs.readdirSync(prismaDir)) {
     if (file === 'e2e.db' || file.startsWith('e2e.db-')) {
@@ -16,7 +16,7 @@ function wipeE2EDatabaseArtifacts(): void {
   }
 }
 
-export default async function globalSetup(): Promise<void> {
+export default async function globalSetup() {
   wipeE2EDatabaseArtifacts();
 
   execSync('npx prisma migrate deploy', {

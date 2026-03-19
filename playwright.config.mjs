@@ -7,7 +7,7 @@ const isCI = Boolean(process.env.CI);
 
 export default defineConfig({
   testDir: './e2e',
-  globalSetup: path.join(root, 'e2e/global-setup.ts'),
+  globalSetup: path.join(root, 'e2e/global-setup.mjs'),
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,

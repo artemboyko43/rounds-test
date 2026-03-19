@@ -12,6 +12,8 @@ export default [
       'playwright-report/**',
       'test-results/**',
       'blob-report/**',
+      'playwright.config.mjs',
+      'e2e/global-setup.mjs',
     ],
   },
   js.configs.recommended,
