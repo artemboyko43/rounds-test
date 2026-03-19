@@ -174,7 +174,8 @@ export const registerAppsRoutes = (app: FastifyInstance) => {
         select: { id: true, capturedAt: true, imagePath: true, status: true },
       });
 
-      const items = screenshots.slice(0, limit).map((s) => ({
+      type TimelineRow = (typeof screenshots)[number];
+      const items = screenshots.slice(0, limit).map((s: TimelineRow) => ({
         id: s.id,
         capturedAt: s.capturedAt.toISOString(),
         imageUrl: `/api/screenshots/${s.id}/file`,
